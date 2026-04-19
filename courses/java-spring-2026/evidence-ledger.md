@@ -25,10 +25,17 @@
 - **Claims по уровням:** R=1, T=0, C=0
 
 ---
+
 | 001 | M0 | Знаю синтаксис records и автогенерируемые методы (equals/hashCode/toString/accessors/canonical ctor) | R | A1.1 | 2026-04-19 | ✅ closed |
+
 | 002 | M0 | Знаю compact constructor для валидации в record | R | A1.1 (освоен в ходе разбора, не применил самостоятельно) | 2026-04-19 | 🟡 in-progress |
+
 | 003 | M0 | Различаю record как nominal tuple / value-based class от JVM value type (Valhalla) | T | A1.1 | 2026-04-19 | 🟡 in-progress |
+
 | 004 | M0 | Удерживаю контракт equals/hashCode семантически (только поля класса, согласованность двух методов) | T | A1.1 | 2026-04-19 | 🟡 in-progress |
+
 | 005 | M0 | Моделирую immutability через final + отсутствие сеттеров как рефлекс, не после замечания | T | A1.1 (первая версия была mutable) | 2026-04-19 | ❌ falsified |
+
 | 006 | M0 [meta] | Есть рефлекс "запустить компилятор / REPL перед словом готово" | — | A1.1 | 2026-04-19 | ❌ falsified |
+
 | 007 | M0 [meta] | Есть рефлекс "fix one → check all" при обнаружении ошибки | — | A1.1 (нашёл в equals, в hashCode — только после указания) | 2026-04-19 | ❌ falsified |
