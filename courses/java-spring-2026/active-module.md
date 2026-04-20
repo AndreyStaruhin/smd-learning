@@ -357,11 +357,17 @@
 4. **Модуль M** (Maven)
 5. **Модуль 5** (Persistence с SQL observability)
 6. **Модуль 4** (Web)
-7. **Модуль 6** (AOP)
-8. **Модуль 7** (Security)
-9. **Модуль 8** (Testing)
-10. **Модуль 9 + 10** (Observability + События)
-11. **Модуль 11** (Cloud-native + GraalVM)
+7. **Модуль 7** (Security)
+8. **Модуль 9 + 10** (Observability + События)
+9. **Модуль 11** (Cloud-native + GraalVM)
+
+## Сквозные темы (не модули — пронизывают всё)
+- **AOP/Proxy** — proxy-механика, self-invocation, аспекты (по вызову)
+- **Testing** — привычка: unit → slice → integration в каждом модуле (по вызову)
+- **SB3-специфика** — Virtual Threads, HTTP Interfaces, Problem Details, Observation API, новый Security API (по вызову)
+- **Clean Code / Clean Architecture** ⚡ — слои, DIP, границы, naming, SRP (всегда на дежурстве)
+
+Проработка через **Совет мудрецов** (code review + экзамен комиссией). Страж Clean Architecture активен постоянно — в парном программировании и при проблематизации кода.
 
 ## План на следующие 2 недели
 - Модуль G, 4 сессии: 1/4, 2/4, 3/4, экзамен
