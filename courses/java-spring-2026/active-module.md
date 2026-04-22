@@ -308,6 +308,146 @@
 
 ---
 
+# Сессия A6 — JVM Fundamentals (2 часа)
+
+Диагностика онтологии JVM как платформы. Не Spring, не фреймворки — сама виртуальная машина. Рихтеровский уровень: что реально происходит под абстракцией "Java кода".
+
+## A6.1 [R] — Classloading и class identity (15 мин)
+
+> В `assessment/A6/ClassLoaderDemo/` загрузи один и тот же class-файл двумя разными URLClassLoader (один parent-first, второй — child-first с явным exclude). Создай экземпляр каждого класса, попробуй `instanceof` и cast из одного в другой. Что получаешь? Почему `ClassCastException` при одинаковых fully qualified names?
+
+**Критерии:** понимает, что class identity = `(ClassLoader, FQN)`, не только FQN? Знает parent delegation model? Может объяснить, почему Spring Boot executable JAR использует кастомный `LaunchedURLClassLoader`?
+
+## A6.2 [T] — Bytecode inspection (20 мин)
+
+> Простой класс `Calc` с методами `add(int, int)`, `addStrings(String, String) { return a + b; }`, `callPrint(List<String> items)`. Сделай `javac Calc.java && javap -c -p Calc`. Предскажи до запуска:
+> 1. Как "a" + "b" компилируется в bytecode — один `ldc` или последовательность? (Java 9+ vs раньше)
+> 2. Какая invoke* инструкция для `items.forEach(System.out::println)`?
+> 3. Что такое `invokedynamic` и почему он нужен для lambda?
+>
+> Сверь с реальным выводом javap. Объясни расхождения.
+
+**Критерии:** различает `invokevirtual` / `invokeinterface` / `invokestatic` / `invokespecial` / `invokedynamic`? Знает, что lambda — это не анонимный класс (был в ранних превью), а `LambdaMetafactory` через `invokedynamic`?
+
+## A6.3 [C] — GC диагностика (25 мин)
+
+> В `assessment/A6/LeakyApp/` — Spring Boot приложение с намеренной утечкой (статическая `Map<String, byte[]>`, в которую endpoint кладёт записи без удаления). Запусти с `-Xmx256m -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=./dump.hprof -Xlog:gc*:gc.log`. Нагрузи через curl в цикле. Дождись OOM.
+>
+> Задачи:
+> 1. Проанализируй `gc.log` — какие события видишь? Young GC, Mixed, Full GC?
+> 2. Открой `dump.hprof` в Eclipse MAT (или VisualVM). Найди dominator tree, определи leak suspect.
+> 3. Сравни поведение на G1 (default в J17+) vs ZGC (`-XX:+UseZGC`). В чём разница по latency и throughput?
+> 4. Что такое "Stop-The-World" и почему в ZGC его практически нет?
+
+**Критерии:** ключевой тест. Понимает поколения (young/old, в G1 — regions)? Знает, когда Full GC — это проблема vs норма? Различает throughput-oriented и latency-oriented сборщики?
+
+## A6.4 [C] — JIT и micro-benchmark (20 мин)
+
+> В `assessment/A6/JitDemo/` напиши "наивный" benchmark:
+> ```java
+> long t = System.nanoTime();
+> for (int i = 0; i < 100_000_000; i++) { result = compute(i); }
+> long dt = System.nanoTime() - t;
+> ```
+> Запусти 3 раза подряд в одном JVM. Результаты будут разными. Почему?
+>
+> Затем:
+> 1. Напиши то же через JMH. Сравни результат.
+> 2. Запусти с `-XX:+PrintCompilation -XX:+UnlockDiagnosticVMOptions -XX:+PrintInlining`. Что видишь?
+> 3. Почему JVM может **полностью удалить** твой цикл, если result не используется? Что такое dead code elimination в JIT?
+
+**Критерии:** понимает разницу interpreted → C1 → C2? Знает про warm-up, profile-guided compilation, inlining, escape analysis? Понимает, почему без JMH micro-benchmarks почти всегда врут?
+
+## Оценка A6
+```
+- Classloading model: 🟢/🟡/🟠/🔴
+- Bytecode literacy: 🟢/🟡/🟠/🔴
+- GC onthology: 🟢/🟡/🟠/🔴
+- JIT awareness: 🟢/🟡/🟠/🔴
+- Profiling tools reflex: 🟢/🟡/🟠/🔴
+```
+
+---
+
+# Сессия A7 — Concurrency & Memory Model (2 часа)
+
+Диагностика: безопасная multithreading-разработка как дисциплина, не знание API. Без этого модуля senior — это senior по названию.
+
+## A7.1 [R] — Race condition и "исправления" (15 мин)
+
+> `assessment/A7/CounterRace.java`: два потока инкрементируют общий `int counter` миллион раз каждый. Ожидаем 2_000_000, получаем меньше. Почему? Исправь **тремя способами**:
+> 1. `synchronized`
+> 2. `AtomicInteger`
+> 3. `volatile int`
+>
+> Запусти каждый. Который не работает и почему?
+
+**Критерии:** ключевой тест. Понимает, что volatile даёт видимость, но НЕ атомарность compound-операций? Знает CAS в AtomicInteger? Понимает стоимость каждого варианта (contention, cache line bouncing)?
+
+## A7.2 [T] — Happens-before и reordering (20 мин)
+
+> `assessment/A7/HappensBefore.java`:
+> ```java
+> int x = 0, y = 0;
+> boolean ready = false;
+> 
+> Thread writer: x = 42; y = 100; ready = true;
+> Thread reader: if (ready) { print(x + y); }
+> ```
+> Что может увидеть reader? 142? 0? 42? 100? Все варианты? Почему?
+>
+> Затем:
+> 1. Сделай `ready` volatile. Что изменилось по JMM?
+> 2. Замени на `AtomicBoolean.set/get`. Что гарантируется?
+> 3. Используй `synchronized` блоки. Какая разница?
+
+**Критерии:** ядро теста. Понимает happens-before как частичный порядок? Знает, что volatile write → volatile read создаёт HB-edge? Понимает reordering (compile-time и runtime)?
+
+## A7.3 [T] — Double-checked locking и initialization (15 мин)
+
+> Классический broken DCL singleton:
+> ```java
+> private static Instance instance;
+> public static Instance get() {
+>   if (instance == null) {
+>     synchronized(Class.class) {
+>       if (instance == null) instance = new Instance();
+>     }
+>   }
+>   return instance;
+> }
+> ```
+> 1. Почему это broken до Java 5?
+> 2. Что исправит `volatile` на поле? Почему это работает только с Java 5+?
+> 3. Holder class idiom (статический вложенный класс) — почему предпочтительнее DCL?
+> 4. Что происходит с record vs class при инициализации?
+
+**Критерии:** понимает safe publication как концепт? Знает JMM изменения в Java 5 (new memory model JSR-133)? Понимает, почему holder pattern использует class initialization lock, который даёт HB бесплатно?
+
+## A7.4 [C] — Virtual Threads и pinning (30 мин)
+
+> В `assessment/A7/VirtualThreadsPinning/` — Spring Boot с `Tomcat` в Virtual Threads mode (SB3). Endpoint, который делает I/O в `synchronized(lock) { slowIO(); }`.
+>
+> Задачи:
+> 1. Запусти с `-Djdk.tracePinnedThreads=full`. Нагрузи. Что видишь в логе?
+> 2. Замени `synchronized` на `ReentrantLock`. Pin-нинг ушёл? Почему?
+> 3. Объясни механику: что такое carrier thread, что такое mount/unmount, почему `synchronized` pin-ит, а `ReentrantLock` — нет.
+> 4. В каких ещё случаях Virtual Thread pin-ится? (JNI, некоторые native блокировки)
+> 5. Какое это имеет значение для твоего реального кода? Где в methodolog есть потенциальные pin-ы?
+
+**Критерии:** понимает Virtual Threads как M:N scheduling с carrier threads? Различает preemption и cooperative unmount? Знает, что это — не про "быстрее", а про "дешевле держать thread заблокированным на I/O"?
+
+## Оценка A7
+```
+- Race conditions recognition: 🟢/🟡/🟠/🔴
+- JMM и happens-before: 🟢/🟡/🟠/🔴
+- Safe publication: 🟢/🟡/🟠/🔴
+- java.util.concurrent fluency: 🟢/🟡/🟠/🔴
+- Virtual Threads onthology: 🟢/🟡/🟠/🔴
+```
+
+---
+
 # Финальная сессия — Heat-Map Construction (60-90 мин)
 
 **Формат:** мета-сессия, Claude только в [Методолог].
@@ -349,17 +489,29 @@
 | Spring Boot 2→3 migration | 🟠 | P1 | - |
 | GraalVM native | 🔴 | P2 | До модуля 11 |
 | Observability | 🟡 | P2 | - |
+| JVM classloading | ? | ? | Зависит от A6.1 |
+| Bytecode literacy | ? | ? | Зависит от A6.2 |
+| GC tuning | ? | ? | Зависит от A6.3 |
+| JIT awareness | ? | ? | Зависит от A6.4 |
+| JMM / happens-before | ? | ? | Зависит от A7.2 |
+| Safe publication | ? | ? | Зависит от A7.3 |
+| Virtual Threads | ? | ? | Зависит от A7.4 |
 
 ## Рекомендованный порядок модулей
 1. **Модуль G** (Generics)
-2. **Модуль X** (Codegen + XSD)
-3. **Модуль 2** (Spring Core / IoC)
-4. **Модуль M** (Maven)
-5. **Модуль 5** (Persistence с SQL observability)
-6. **Модуль 4** (Web)
-7. **Модуль 7** (Security)
-8. **Модуль 9 + 10** (Observability + События)
-9. **Модуль 11** (Cloud-native + GraalVM)
+2. **Модуль J** (JVM Fundamentals) — NEW
+3. **Модуль C** (Concurrency & Memory Model) — NEW
+4. **Модуль X** (Codegen + XSD)
+5. **Модуль 2** (Spring Core / IoC)
+6. **Модуль M** (Maven)
+7. **Модуль 5** (Persistence с SQL observability)
+8. **Модуль 4** (Web — с DispatcherServlet internals)
+9. **Модуль 6** (AOP — с CGLIB/JDK proxy механикой)
+10. **Модуль 7** (Security — с SecurityFilterChain и ThreadLocal SecurityContext)
+11. **Модуль 8** (Testing — с ContextCache и @Transactional rollback механикой)
+12. **Модуль 9 + 10** (Observability + События — с Micrometer Observation API)
+13. **Модуль 11** (Cloud-native + GraalVM)
+14. **Финальная сессия** (Reactive/WebFlux — парадигмальный взгляд сбоку)
 
 ## Сквозные темы (не модули — пронизывают всё)
 - **AOP/Proxy** — proxy-механика, self-invocation, аспекты (по вызову)
@@ -372,6 +524,7 @@
 ## План на следующие 2 недели
 - Модуль G, 4 сессии: 1/4, 2/4, 3/4, экзамен
 - Первая мета-сессия после модуля: дата [...]
+- Далее: Модуль J (JVM) → Модуль C (Concurrency) — основано на heat-map по A6 и A7
 ```
 
 **Шаг 5. Первая мета-запись** (через Claude Code в `meta-sessions/ms-00-kickoff.md`): общее впечатление, неожиданности, настрой.
@@ -381,11 +534,11 @@
 # Закрытие Модуля 0
 
 Закрыт, когда:
-- ✅ 5 сессий ассессмента пройдены
-- ✅ `heat-map.md` построена
-- ✅ Приоритизированный порядок модулей составлен
+- ✅ 7 сессий ассессмента пройдены (A1–A5 + A6 + A7)
+- ✅ `heat-map.md` построена с покрытием JVM и concurrency зон
+- ✅ Приоритизированный порядок модулей составлен (с учётом новых MJ и MC)
 - ✅ Первая мета-запись в `meta-sessions/`
-- ✅ 25 записей Evidence в ledger
-- ✅ 6 записей в reflection-log (5 сессий + финал)
+- ✅ 34 записи Evidence в ledger (25 из A1–A5 + 9 из A6+A7)
+- ✅ 8 записей в reflection-log (7 сессий + финал)
 
 С этого момента — основной курс по вашей индивидуальной программе.
