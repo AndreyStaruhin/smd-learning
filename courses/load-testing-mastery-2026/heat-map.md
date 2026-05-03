@@ -17,7 +17,7 @@
 | 9 | Tomcat threads (accept-count, max-connections) | 🔴 Cold | P1 | «В процессе изучения в Java/Spring-курсе». Пересечение сильное. |
 | 10 | `SELECT FOR UPDATE SKIP LOCKED` под нагрузкой | 🔴 Cold | P3 | Переносится на M2/M3 (сценарий B не в MVP). |
 | 11 | WireMock | 🟡 Shallow | P1 | «Немного работал». Нужно достаточно для стабов СМЭВ и Gate-out. |
-| 12 | Docker-compose для стенда | 🟠 Gaps | P1 | «Работал очень давно». Инфраструктурная задача M1. |
+| 12 | Docker-compose для стенда | ⚪ out-of-scope | — | (изменено M1.7, 2026-05-02) Решением сессии M1.7 docker-compose, Dockerfile, инфраструктурная конфигурация компонентов стенда вынесены за scope курса. Делегация легитимна без режима цейтнота. См. `course-mechanics.md §8` (M1.7-уточнение). |
 | 13 | CI-интеграция нагрузочных тестов | 🟠 Gaps | P3 | Вне MVP первого подхода. |
 | 14 | Prometheus (cardinality, pull-model, labels) | 🟠 Gaps | **P0** | Производное от ответа «раз в пару лет гуглю». Для Grafana-дашбордов критично. |
 | 15 | Micrometer (dimensional model, registry, tags) | 🔴 Cold | **P0** | Никогда не трогал. Нужен для PR в продукт — первый содержательный шаг M1. |
